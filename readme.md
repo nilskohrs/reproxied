@@ -15,7 +15,7 @@ experimental:
   plugins:
     reproxied:
       moduleName: "github.com/nilskohrs/reproxied"
-      version: "v0.0.1"
+      version: "v0.0.3"
 ```
 
 ### Dynamic
