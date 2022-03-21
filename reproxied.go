@@ -55,12 +55,9 @@ func NewWithClient(ctx context.Context, next http.Handler, config *Config, name 
 }
 
 func (c *reProxied) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	req.Host = c.targetHostURL.Host
-	req.URL.Host = c.targetHostURL.Host
-	req.URL.Scheme = c.targetHostURL.Scheme
-	req.URL.User = c.targetHostURL.User
+	proxyRequest := c.createProxyRequest(req)
 
-	resp, err := c.client.Do(req)
+	resp, err := c.client.Do(proxyRequest)
 	if err != nil {
 		rw.WriteHeader(http.StatusBadGateway)
 		_, _ = rw.Write([]byte(err.Error()))
@@ -77,4 +74,38 @@ func (c *reProxied) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	rw.WriteHeader(resp.StatusCode)
 	buf := make([]byte, 1024)
 	_, _ = io.CopyBuffer(rw, resp.Body, buf)
+}
+
+func (c *reProxied) createProxyRequest(req *http.Request) *http.Request {
+	proxyRequest := &http.Request{
+		Method: req.Method,
+		URL: &url.URL{
+			Scheme:      c.targetHostURL.Scheme,
+			Opaque:      req.URL.Opaque,
+			User:        c.targetHostURL.User,
+			Host:        c.targetHostURL.Host,
+			Path:        req.URL.Path,
+			ForceQuery:  req.URL.ForceQuery,
+			RawQuery:    req.URL.RawQuery,
+			Fragment:    req.URL.Fragment,
+			RawFragment: req.URL.RawFragment,
+		},
+		Proto:            req.Proto,
+		ProtoMajor:       req.ProtoMajor,
+		ProtoMinor:       req.ProtoMinor,
+		Header:           req.Header,
+		Body:             req.Body,
+		ContentLength:    req.ContentLength,
+		TransferEncoding: req.TransferEncoding,
+		Close:            req.Close,
+		Host:             c.targetHostURL.Host,
+		Form:             req.Form,
+		PostForm:         req.PostForm,
+		MultipartForm:    req.MultipartForm,
+		Trailer:          req.Trailer,
+		RemoteAddr:       req.RemoteAddr,
+		TLS:              req.TLS,
+		Response:         req.Response,
+	}
+	return proxyRequest
 }
