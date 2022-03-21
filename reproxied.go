@@ -23,11 +23,12 @@ func CreateConfig() *Config {
 // reProxied a Traefik plugin.
 type reProxied struct {
 	next          http.Handler
-	client        HttpClient
+	client        HTTPClient
 	targetHostURL *url.URL
 }
 
-type HttpClient interface {
+// HTTPClient is a reduced interface for http.Client.
+type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
@@ -35,14 +36,13 @@ type HttpClient interface {
 func New(ctx context.Context, next http.Handler, config *Config, name string) (http.Handler, error) {
 	proxyURL, err := url.Parse(config.Proxy)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse proxy url: %v", err)
+		return nil, fmt.Errorf("unable to parse proxy url: %w", err)
 	}
 	return NewWithClient(ctx, next, config, name, &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyURL)}})
 }
 
 // NewWithClient creates a new reProxied plugin.
-func NewWithClient(ctx context.Context, next http.Handler, config *Config, name string, client HttpClient) (http.Handler, error) {
-
+func NewWithClient(ctx context.Context, next http.Handler, config *Config, name string, client HTTPClient) (http.Handler, error) {
 	targetHostURL, err := url.Parse(config.TargetHost)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse target host url: %w", err)
@@ -61,13 +61,12 @@ func (c *reProxied) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	req.URL.User = c.targetHostURL.User
 
 	resp, err := c.client.Do(req)
-
 	if err != nil {
 		rw.WriteHeader(http.StatusBadGateway)
 		return
 	}
 
-	defer func() { resp.Body.Close() }()
+	defer func() { _ = resp.Body.Close() }()
 
 	for key, values := range resp.Header {
 		for _, value := range values {
@@ -76,5 +75,5 @@ func (c *reProxied) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 	rw.WriteHeader(resp.StatusCode)
 	buf := make([]byte, 1024)
-	io.CopyBuffer(rw, resp.Body, buf) //nolint:errcheck
+	_, _ = io.CopyBuffer(rw, resp.Body, buf)
 }
