@@ -63,6 +63,7 @@ func (c *reProxied) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	resp, err := c.client.Do(req)
 	if err != nil {
 		rw.WriteHeader(http.StatusBadGateway)
+		_, _ = rw.Write([]byte(err.Error()))
 		return
 	}
 
