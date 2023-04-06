@@ -11,8 +11,9 @@ import (
 
 // Config the plugin configuration.
 type Config struct {
-	Proxy      string `json:"proxy"`
-	TargetHost string `json:"targetHost"`
+	Proxy          string `json:"proxy"`
+	TargetHost     string `json:"targetHost"`
+	KeepHostHeader bool   `json:"keepHostHeader"`
 }
 
 // CreateConfig creates the default plugin configuration.
@@ -22,9 +23,10 @@ func CreateConfig() *Config {
 
 // reProxied a Traefik plugin.
 type reProxied struct {
-	next          http.Handler
-	client        HTTPClient
-	targetHostURL *url.URL
+	next           http.Handler
+	client         HTTPClient
+	targetHostURL  *url.URL
+	keepHostHeader bool
 }
 
 // HTTPClient is a reduced interface for http.Client.
@@ -48,9 +50,10 @@ func NewWithClient(ctx context.Context, next http.Handler, config *Config, name 
 		return nil, fmt.Errorf("unable to parse target host url: %w", err)
 	}
 	return &reProxied{
-		next:          next,
-		targetHostURL: targetHostURL,
-		client:        client,
+		next:           next,
+		targetHostURL:  targetHostURL,
+		client:         client,
+		keepHostHeader: config.KeepHostHeader,
 	}, nil
 }
 
@@ -77,6 +80,8 @@ func (c *reProxied) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (c *reProxied) createProxyRequest(req *http.Request) *http.Request {
+	hostHeader := c.computeHostHeader(req.Host)
+
 	proxyRequest := &http.Request{
 		Method: req.Method,
 		URL: &url.URL{
@@ -98,7 +103,7 @@ func (c *reProxied) createProxyRequest(req *http.Request) *http.Request {
 		ContentLength:    req.ContentLength,
 		TransferEncoding: req.TransferEncoding,
 		Close:            req.Close,
-		Host:             c.targetHostURL.Host,
+		Host:             hostHeader,
 		Form:             req.Form,
 		PostForm:         req.PostForm,
 		MultipartForm:    req.MultipartForm,
@@ -108,4 +113,14 @@ func (c *reProxied) createProxyRequest(req *http.Request) *http.Request {
 		Response:         req.Response,
 	}
 	return proxyRequest
+}
+
+func (c *reProxied) computeHostHeader(originalHostHeader string) string {
+	var hostHeader string
+	if c.keepHostHeader {
+		hostHeader = originalHostHeader
+	} else {
+		hostHeader = c.targetHostURL.Host
+	}
+	return hostHeader
 }

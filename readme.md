@@ -3,6 +3,8 @@
 ReProxied is a middleware plugin for [Traefik](https://github.com/traefik/traefik) to route an incoming request through a proxy.
 Be aware that this middleware initiates the call to the proxy and any middlewares after this one will be skipped. If the request to the proxy itself fails the middleware will respond with a 502 bad gateway response.
 
+When set to `true` the parameter `keepHostHeader` allow to keep original Host as HTTP header even if proxied request target any other host.
+
 ## Configuration
 
 ### Static
@@ -16,6 +18,7 @@ experimental:
     reproxied:
       moduleName: "github.com/nilskohrs/reproxied"
       version: "v0.0.3"
+      keepHostHeader: true|false # optional, false by default
 ```
 
 ### Dynamic
@@ -27,4 +30,5 @@ http:
       reproxied:
         proxy: http://proxyHost:3128
         targetHost: https://example.com
+        keepHostHeader: true|false # optional, false by default
 ```
