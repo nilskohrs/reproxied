@@ -17,7 +17,7 @@ experimental:
   plugins:
     reproxied:
       moduleName: "github.com/nilskohrs/reproxied"
-      version: "v0.0.3"
+      version: "v0.0.5"
       keepHostHeader: true|false # optional, false by default
 ```
 
